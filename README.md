@@ -1,0 +1,1 @@
+# street-cred is an Shopify private app.
