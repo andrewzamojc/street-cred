@@ -3,8 +3,9 @@ var app         = express();
 var shopifyAPI  = require('shopify-node-api');
 var request     = require('request');
 var url         = require('url');
-var fb          = require('fb');
+var FB          = require('fb');
 var Q           = require('q');
+var Parse       = require('parse').Parse;
 
 var Shopify = new shopifyAPI({
     shop: 'arbor-natural',
@@ -13,6 +14,10 @@ var Shopify = new shopifyAPI({
     access_token: process.env.SHOPIFY_API_PASSWORD
 });
 
+Parse.initialize(process.env.PARSE_APP_ID, process.env.PARSE_JS_KEY);
+
+
+
 app.set('port', (process.env.PORT || 5000));
 
 app.get('/signin-with-facebook', function(request, response) {
@@ -20,7 +25,7 @@ app.get('/signin-with-facebook', function(request, response) {
 
     var accessToken = getQueryParamValue(request.url, 'access_token');
 
-    fb.setAccessToken(accessToken);
+    FB.setAccessToken(accessToken);
 
     var facebookProfile = null;
     var customer = null;
@@ -81,7 +86,7 @@ app.listen(app.get('port'), function() {
 function getCustomerFacebookData() {
     var deferred = Q.defer();
 
-    fb.api('/me?fields=email,first_name,last_name', function(response) {
+    FB.api('/me?fields=email,first_name,last_name', function(response) {
         console.log('FB DATA');
         // console.log(response);
         deferred.resolve(response);
