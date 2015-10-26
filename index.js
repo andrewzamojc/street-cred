@@ -1,7 +1,6 @@
 var express     = require('express');
 var app         = express();
 var shopifyAPI  = require('shopify-node-api');
-var $           = require('jQuery');
 var request     = require('request');
 var url         = require('url');
 var fb          = require('fb');
