@@ -59,7 +59,6 @@ app.get('/signin-with-facebook', function(request, response) {
         }
     })
     .then(function(response) {
-        console.log('AFTER BRANCH');
         return loginCustomer(customer.email, randomPassword);
     })
     .then(function success(data) {
@@ -97,12 +96,9 @@ function getCustomerFacebookData() {
 }
 
 function getCustomerIdByFacebookId(facebookId) {
-    console.log('ding');
     var query    = new Parse.Query(ParseCustomer);
 
     query.equalTo("facebookId", facebookId);
-
-    console.log('making query');
     return query.first().then(function(result) {
         if (!result || !result.get) {
             return;
@@ -113,7 +109,6 @@ function getCustomerIdByFacebookId(facebookId) {
 
 function addCustomerToParse(shopifyCustomerId, facebookId) {
     var newCustomer = new ParseCustomer();
-    console.log(shopifyCustomerId);
     newCustomer.set('shopifyCustomerId', shopifyCustomerId.toString());
     newCustomer.set('facebookId', facebookId);
     return newCustomer.save();
@@ -154,9 +149,6 @@ function resetCustomerPassword(customerId, newPassword) {
             headers: headers
         };
 
-
-        console.log('PW RESET DATA');
-        console.log(customerId);
         console.log(JSON.stringify(data));
 
         // console.log(response);
