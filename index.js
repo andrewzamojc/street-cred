@@ -5,7 +5,7 @@ var request     = require('request');
 var url         = require('url');
 var FB          = require('fb');
 var Q           = require('q');
-var Parse       = require('parse').Parse;
+var Parse       = require('parse/node');
 
 var Shopify = new shopifyAPI({
     shop: 'arbor-natural',
@@ -15,6 +15,7 @@ var Shopify = new shopifyAPI({
 });
 
 Parse.initialize(process.env.PARSE_APP_ID, process.env.PARSE_JS_KEY);
+var ParseCustomer = Parse.Object.extend("Customer");
 
 
 
@@ -34,35 +35,36 @@ app.get('/signin-with-facebook', function(request, response) {
     getCustomerFacebookData()
     .then(function(data) {
         facebookProfile = data;
-        console.log(facebookProfile);
-        return findCustomerByFacebookId(data.id);
+        return getCustomerIdByFacebookId(data.id);
     })
-    .then(function success(foundCustomer) {
-        if (!foundCustomer) {
-            console.log('CRATE CUSTOMER');
-            if (!facebookProfile || !facebookProfile.email) {
-                throw 'Facebook profile email not available';
-            }
+    .then(function (customerId) {
+        if (!customerId) {
             customer = {
                 facebookId: facebookProfile.id,
                 firstName: facebookProfile.first_name,
                 lastName: facebookProfile.last_name,
                 email: facebookProfile.email // need a check for this property
             };
-            return createCustomer(customer.firstName, customer.lastName, customer.email, customer.facebookId, randomPassword);
+            return  createCustomer(customer.firstName, customer.lastName, customer.email, customer.facebookId, randomPassword)
+                    .then(function(result) {
+                        console.log(JSON.stringify(result.data));
+                        return addCustomerToParse(result.data.customer.id, customer.facebookId);
+                    });
         } else {
-            console.log('GOT CUSTOMER');
-            customer = foundCustomer;
-            return resetCustomerPassword(foundCustomer.id, randomPassword);
+            return  getCustomerById(customerId)
+                    .then(function(foundCustomer) {
+                        customer = foundCustomer;
+                        return resetCustomerPassword(customerId, randomPassword);
+                    });
         }
     })
     .then(function(response) {
+        console.log('AFTER BRANCH');
         return loginCustomer(customer.email, randomPassword);
     })
     .then(function success(data) {
         console.log('redirect customer to shop');
-        console.log(data);
-        // data.res.headers.location
+        //console.log(data);
         var sid = getQueryParamValue(data.res.headers.location, 'sid');
         response.writeHead(302, {
             'Location': 'http://arbornatural.com/pages/refer?sid=' + sid
@@ -94,27 +96,45 @@ function getCustomerFacebookData() {
     return deferred.promise;
 }
 
-function findCustomerByFacebookId(facebookId) {
+function getCustomerIdByFacebookId(facebookId) {
+    console.log('ding');
+    var query    = new Parse.Query(ParseCustomer);
+
+    query.equalTo("facebookId", facebookId);
+
+    console.log('making query');
+    return query.first().then(function(result) {
+        if (!result || !result.get) {
+            return;
+        }
+        return result.get('shopifyCustomerId');
+    });
+}
+
+function addCustomerToParse(shopifyCustomerId, facebookId) {
+    var newCustomer = new ParseCustomer();
+    console.log(shopifyCustomerId);
+    newCustomer.set('shopifyCustomerId', shopifyCustomerId.toString());
+    newCustomer.set('facebookId', facebookId);
+    return newCustomer.save();
+}
+
+function getCustomerById(customerId) {
     var deferred = Q.defer();
-    Shopify.get('/admin/customers/search.json?query=' + facebookId, function(err, data, headers) {
-        var fullResponse = {
+    Shopify.get('/admin/customers/' + customerId + '.json', function(err, data, headers) {
+        var response = {
             err: err,
             data: data,
             headers: headers
         };
         if (err) {
-            deferred.reject(fullResponse);
-        } else if(!data || !data.customers) {
-            fullResponse.err = 'Query did not return any customers';
-            deferred.reject(fullResponse);
+            deferred.reject(response);
+        } else if(!data || !data.customer) {
+            response.err = 'Query did not return a customer';
+            deferred.reject(response);
         } else {
             console.log('CUSTOMER DATA');
-            // console.log(data.customers[0]);
-            if (data.customers.length === 0) {
-                deferred.resolve(null);
-            } else {
-                deferred.resolve(data.customers[0]);
-            }
+            deferred.resolve(data.customer);
         }
     });
     return deferred.promise;
@@ -134,7 +154,11 @@ function resetCustomerPassword(customerId, newPassword) {
             headers: headers
         };
 
+
         console.log('PW RESET DATA');
+        console.log(customerId);
+        console.log(JSON.stringify(data));
+
         // console.log(response);
         deferred.resolve(response);
     });
@@ -150,14 +174,7 @@ function createCustomer(firstName, lastName, email, facebookId, password) {
             "email": email,
             "password": password,
             "password_confirmation": password,
-            "send_email_welcome": false,
-            "tags": facebookId,
-            "metafields": [{
-                "key": "facebookId",
-                "value": facebookId,
-                "value_type": "string",
-                "namespace": "global"
-            }]
+            "send_email_welcome": false
         }
     };
 
