@@ -25,6 +25,7 @@ app.get('/signin-with-facebook', function(request, response) {
     console.log("/signin-with-facebook was called");
 
     var accessToken = getQueryParamValue(request.url, 'access_token');
+    var nextUrl     = getQueryParamValue(request.url, 'next');
 
     FB.setAccessToken(accessToken);
 
@@ -63,12 +64,20 @@ app.get('/signin-with-facebook', function(request, response) {
     })
     .then(function success(data) {
         console.log('redirect customer to shop');
-        //console.log(data);
-        var sid = getQueryParamValue(data.res.headers.location, 'sid');
-        response.writeHead(302, {
-            'Location': 'http://arbornatural.com/pages/refer?sid=' + sid
-        });
-        response.end();
+
+        if (nextUrl) {
+            var sid = getQueryParamValue(data.res.headers.location, 'sid');
+            response.writeHead(302, {
+                //'Location': 'http://arbornatural.com/pages/refer?sid=' + sid
+                'Location': nextUrl + '?sid=' + sid + '&customerId=' + customerId
+            });
+            response.end();
+        } else {
+            respons.writeHead(200, {"Content-Type": "application/json"});
+            response.end({
+                customerId: customerId
+            });
+        }
     }, function error(data) {
         response.writeHead(500, {"Content-Type": "application/json"});
         console.log('ERROR');
