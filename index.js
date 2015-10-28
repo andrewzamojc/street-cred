@@ -27,8 +27,6 @@ app.get('/signin-with-facebook', function(request, response) {
     var accessToken = getQueryParamValue(request.url, 'access_token');
     var nextUrl     = getQueryParamValue(request.url, 'next');
 
-    console.log('NEXT NEXT NEXT: ', nextUrl);
-
     FB.setAccessToken(accessToken);
 
     var facebookProfile = null;
@@ -51,6 +49,7 @@ app.get('/signin-with-facebook', function(request, response) {
             return  createCustomer(customer.firstName, customer.lastName, customer.email, customer.facebookId, randomPassword)
                     .then(function(result) {
                         console.log(JSON.stringify(result.data));
+                        customer.id = result.data.customer.id;
                         return addCustomerToParse(result.data.customer.id, customer.facebookId);
                     });
         } else {
@@ -69,9 +68,11 @@ app.get('/signin-with-facebook', function(request, response) {
 
         if (nextUrl) {
             var sid = getQueryParamValue(data.res.headers.location, 'sid');
+            nextUrl = nextUrl.replace(':sid', sid);
+            nextUrl = nextUrl.replace(':customerId', customer.id)
             response.writeHead(302, {
                 //'Location': 'http://arbornatural.com/pages/refer?sid=' + sid
-                'Location': nextUrl + '?sid=' + sid + '&customerId=' + customer.id
+                'Location': nextUrl
             });
             response.end();
         } else {
