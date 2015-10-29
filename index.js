@@ -86,7 +86,7 @@ app.get('/signin-with-facebook', function(request, response) {
     .then(function success(data) {
         console.log('WE RE DONE HERE', data);
         response.writeHead(302, {
-            'Location': 'http://arbornatural.com?email=' + customer.email + '&password=' + randomPassword
+            'Location': 'http://www.arbornatural.com?email=' + customer.email + '&password=' + randomPassword
         });
         response.end();
     }, function error(data) {
