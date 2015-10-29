@@ -55,32 +55,40 @@ app.get('/signin-with-facebook', function(request, response) {
         } else {
             return  getCustomerById(customerId)
                     .then(function(foundCustomer) {
+                        console.log('FOUND CUSTOMER', foundCustomer);
                         customer = foundCustomer;
                         return resetCustomerPassword(customerId, randomPassword);
                     });
         }
     })
-    .then(function(response) {
-        return loginCustomer(customer.email, randomPassword);
-    })
-    .then(function success(data) {
-        console.log('redirect customer to shop');
+    // .then(function(response) {
+    //     return loginCustomer(customer.email, randomPassword);
+    // })
+    // .then(function success(data) {
+    //     console.log('redirect customer to shop');
 
-        if (nextUrl) {
-            var sid = getQueryParamValue(data.res.headers.location, 'sid');
-            nextUrl = nextUrl.replace(':sid', sid);
-            nextUrl = nextUrl.replace(':customerId', customer.id)
-            response.writeHead(302, {
-                //'Location': 'http://arbornatural.com/pages/refer?sid=' + sid
-                'Location': nextUrl
-            });
-            response.end();
-        } else {
-            respons.writeHead(200, {"Content-Type": "application/json"});
-            response.end({
-                customerId: customerId
-            });
-        }
+    //     if (nextUrl) {
+    //         var sid = getQueryParamValue(data.res.headers.location, 'sid');
+    //         console.log('SID SID SID SID SID SID', sid);
+    //         nextUrl = nextUrl.replace(':sid', sid);
+    //         nextUrl = nextUrl.replace(':customerId', customer.id)
+    //         response.writeHead(302, {
+    //             //'Location': 'http://arbornatural.com/pages/refer?sid=' + sid
+    //             'Location': nextUrl
+    //         });
+    //         response.end();
+    //     } else {
+    //         respons.writeHead(200, {"Content-Type": "application/json"});
+    //         response.end({
+    //             customerId: customerId
+    //         });
+    //     }
+    .then(function success(data) {
+        console.log('WE RE DONE HERE', data);
+        response.writeHead(302, {
+            'Location': 'http://arbornatural.com?email=' + customer.email + '&password=' + randomPassword
+        });
+        response.end();
     }, function error(data) {
         response.writeHead(500, {"Content-Type": "application/json"});
         console.log('ERROR');
@@ -148,6 +156,7 @@ function getCustomerById(customerId) {
 }
 
 function resetCustomerPassword(customerId, newPassword) {
+    console.log('RESET');
     var deferred = Q.defer();
     Shopify.put('/admin/customers/' + customerId + '.json', {
         "customer": {
@@ -170,6 +179,8 @@ function resetCustomerPassword(customerId, newPassword) {
 }
 
 function createCustomer(firstName, lastName, email, facebookId, password) {
+    console.log('CREATING CUSTOMER');
+
     var deferred = Q.defer();
     var postData = {
         "customer": {
@@ -182,7 +193,6 @@ function createCustomer(firstName, lastName, email, facebookId, password) {
         }
     };
 
-    console.log('CREATING CUSTOMER');
     Shopify.post('/admin/customers.json', postData, function(err, data, headers){
         var response = {
             err: err,
